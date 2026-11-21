@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Singles Chat Room</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#1c1425;--card:#2a1f37;--line:#44345a;--rose:#ff7a90;--cream:#fbf3ee;--mute:#b3a5c4}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--cream);line-height:1.5}
+h1,h2{font-family:'DM Serif Display',serif;font-weight:400}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--rose);outline-offset:2px}
+.screen{display:none;height:100%;flex-direction:column}
+.screen.on{display:flex}
+.center{margin:auto;max-width:420px;padding:28px 22px;text-align:center}
+.center h1{font-size:2.4rem;margin-bottom:10px}
+.center p{color:var(--mute);margin-bottom:22px}
+.btn{background:var(--rose);color:#2a0f17;border:0;border-radius:999px;padding:13px 26px;font-weight:700;cursor:pointer}
+.btn.alt{background:transparent;color:var(--cream);border:1px solid var(--line)}
+.btn.del{background:#7a2a3a;color:#fff}
+form{text-align:left}
+label{display:block;font-size:.85rem;color:var(--mute);margin:14px 0 4px}
+input[type=text],input[type=number],textarea{width:100%;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px}
+.chk{display:flex;gap:10px;align-items:flex-start;margin-top:14px;color:var(--cream);font-size:.95rem}
+.chk input{margin-top:4px;width:18px;height:18px;accent-color:var(--rose)}
+.err{color:#ff9aa9;min-height:1.4em;margin-top:10px;font-size:.9rem}
+header.top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--card)}
+header.top h2{font-size:1.4rem}
+header.top .r{display:flex;gap:8px}
+header.top .btn{padding:7px 14px;font-size:.85rem}
+#msgs{flex:1;overflow-y:auto;padding:14px 14px 6px}
+.m{display:flex;gap:10px;margin-bottom:14px;max-width:640px}
+.av{width:38px;height:38px;border-radius:50%;background:var(--line);flex:none;object-fit:cover;display:flex;align-items:center;justify-content:center;font-weight:700}
+.nm{background:none;border:0;padding:0;font-weight:700;color:var(--rose);cursor:pointer}
+.tm{font-size:.75rem;color:var(--mute);margin-left:6px}
+.tx{word-break:break-word;white-space:pre-wrap}
+.mine .nm{color:var(--cream)}
+.x{background:none;border:0;color:#ff9aa9;cursor:pointer;margin-left:6px}
+form.send{display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:var(--card)}
+form.send input{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:12px 16px}
+.empty{text-align:center;color:var(--mute);margin-top:40px}
+#pm{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:20px;z-index:9}
+#pm.on{display:flex}
+.pcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;max-width:360px;width:100%;text-align:center}
+.pcard .av{width:84px;height:84px;margin:0 auto 10px;font-size:2rem}
+.pcard .bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}
+</style>
+</head>
+<body>
+
+<!-- Setup message (shown until Firebase keys are pasted) -->
+<div class="screen" id="s-setup"><div class="center"><h1>Setup baaki hai</h1><p>Is file ke script mein <b>firebaseConfig</b> ki jagah apni Firebase keys paste karein.</p></div></div>
+
+<div class="screen" id="s-login"><div class="center">
+  <h1>Singles Chat Room</h1>
+  <p>Sirf 18+ singles ke liye. Google se login karein aur sab se baat karein.</p>
+  <button class="btn" id="gBtn">Google se login karein</button>
+  <div class="err" id="lerr"></div>
+</div></div>
+
+<div class="screen" id="s-profile"><div class="center">
+  <h2 style="font-size:1.8rem;text-align:center">Apna profile banayein</h2>
+  <form id="pf">
+    <label for="pn">Naam (jo sab ko dikhega)</label><input type="text" id="pn" maxlength="24" required>
+    <label for="pa">Umar</label><input type="number" id="pa" min="1" max="99" required>
+    <label for="pb">Apne baare mein (optional)</label><textarea id="pb" maxlength="140" rows="3"></textarea>
+    <label class="chk"><input type="checkbox" id="c1" required><span>Meri umar 18 saal ya zyada hai.</span></label>
+    <label class="chk"><input type="checkbox" id="c2" required><span>Main single hoon, aur sab se izzat se baat karunga/karungi.</span></label>
+    <div class="err" id="perr"></div>
+    <button class="btn" style="margin-top:12px;width:100%">Chat mein jaayein</button>
+  </form>
+</div></div>
+
+<div class="screen" id="s-chat">
+  <header class="top"><h2>Singles Chat Room</h2><div class="r"><button class="btn alt" id="me">Profile</button><button class="btn alt" id="out">Logout</button></div></header>
+  <div id="msgs"></div>
+  <form class="send" id="sf"><input id="ti" maxlength="500" placeholder="Message likhein" autocomplete="off" aria-label="Message"><button class="btn">Bhejein</button></form>
+</div>
+
+<div id="pm"><div class="pcard" id="pc"></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ====== YAHAN APNI FIREBASE KEYS PASTE KAREIN ====== */
+var firebaseConfig={apiKey:"AIzaSyCd9FraaLHdUE7__NCOhwkuLi0vH9kFJCU",authDomain:"singles-chat-b781f.firebaseapp.com",projectId:"singles-chat-b781f",storageBucket:"singles-chat-b781f.firebasestorage.app",messagingSenderId:"256316868274",appId:"1:256316868274:web:6d517b88747ae5efb92bab"};
+/* ==================================================== */
+
+/* Firestore Rules (Firebase > Firestore > Rules mein paste karein):
+rules_version='2';
+service cloud.firestore{match /databases/{d}/documents{
+ function adm(){return exists(/databases/$(d)/documents/admins/$(request.auth.uid));}
+ function ban(){return exists(/databases/$(d)/documents/bans/$(request.auth.uid));}
+ match /users/{u}{allow read:if request.auth!=null;allow write:if request.auth.uid==u&&request.resource.data.age>=18;}
+ match /messages/{m}{allow read:if request.auth!=null;
+   allow create:if request.auth!=null&&!ban()&&request.resource.data.uid==request.auth.uid&&request.resource.data.text.size()<=500;
+   allow delete:if adm();}
+ match /reports/{r}{allow create:if request.auth!=null;allow read:if adm();}
+ match /bans/{b}{allow read:if request.auth!=null;allow write:if adm();}
+ match /admins/{a}{allow read:if request.auth.uid==a;}
+}}
+*/
+
+function $(i){return document.getElementById(i)}
+function show(id){document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("on")});$(id).classList.add("on")}
+function E(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+
+if(firebaseConfig.apiKey.indexOf("PASTE")===0){show("s-setup")}
+else{
+var app=firebase.initializeApp(firebaseConfig),auth=firebase.auth(),db=firebase.firestore();
+var ME=null,PROF=null,ADMIN=false,unsub=null;
+var blocked=[];try{blocked=JSON.parse(localStorage.getItem("blocked")||"[]")}catch(e){}
+
+$("gBtn").onclick=function(){$("lerr").textContent="";auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(function(e){$("lerr").textContent="Login nahi hua: "+e.message})};
+$("out").onclick=function(){if(unsub)unsub();auth.signOut()};
+
+auth.onAuthStateChanged(function(u){
+  ME=u;if(unsub){unsub();unsub=null}
+  if(!u){show("s-login");return}
+  Promise.all([db.doc("users/"+u.uid).get(),db.doc("bans/"+u.uid).get(),db.doc("admins/"+u.uid).get().catch(function(){return{exists:false}})]).then(function(r){
+    if(r[1].exists){show("s-login");$("lerr").textContent="Aap is chat se block hain.";auth.signOut();return}
+    ADMIN=r[2].exists;
+    if(r[0].exists){PROF=r[0].data();enter()}else{$("pn").value=u.displayName||"";show("s-profile")}
+  }).catch(function(e){show("s-login");$("lerr").textContent="Error: "+e.message});
+});
+
+$("pf").onsubmit=function(e){
+  e.preventDefault();var age=parseInt($("pa").value,10);
+  if(!(age>=18)){$("perr").textContent="Yeh chat sirf 18+ ke liye hai.";return}
+  var p={name:$("pn").value.trim(),age:age,bio:$("pb").value.trim(),photo:ME.photoURL||"",single:true};
+  db.doc("users/"+ME.uid).set(p).then(function(){PROF=p;enter()}).catch(function(e){$("perr").textContent="Save nahi hua: "+e.message});
+};
+$("me").onclick=function(){
+  $("pn").value=PROF.name;$("pa").value=PROF.age;$("pb").value=PROF.bio||"";$("c1").checked=$("c2").checked=true;show("s-profile");
+};
+
+function enter(){
+  show("s-chat");var box=$("msgs");
+  unsub=db.collection("messages").orderBy("t","desc").limit(100).onSnapshot(function(snap){
+    var near=box.scrollHeight-box.scrollTop-box.clientHeight<120;
+    box.textContent="";var docs=[];snap.forEach(function(d){docs.push(d)});docs.reverse();
+    var n=0;
+    docs.forEach(function(d){var m=d.data();if(blocked.indexOf(m.uid)>-1)return;n++;box.appendChild(row(d.id,m))});
+    if(!n)box.appendChild(E("p","empty","Abhi koi message nahi. Pehla message aap bhejein."));
+    if(near||n<2)box.scrollTop=box.scrollHeight;
+  },function(e){box.textContent="Messages load nahi hue: "+e.message});
+}
+function avatar(p,c){
+  if(p.photo){var i=E("img","av");i.src=p.photo;i.alt="";i.referrerPolicy="no-referrer";if(c)i.className=c;return i}
+  return E("div",c||"av",(p.name||"?").charAt(0).toUpperCase());
+}
+function row(id,m){
+  var r=E("div","m"+(ME&&m.uid===ME.uid?" mine":""));
+  r.appendChild(avatar(m));
+  var b=E("div");var h=E("div");
+  var nb=E("button","nm",m.name);nb.onclick=function(){openProfile(m.uid)};
+  h.appendChild(nb);
+  if(m.t){h.appendChild(E("span","tm",m.t.toDate().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})))}
+  if(ADMIN){var x=E("button","x","Delete");x.onclick=function(){db.doc("messages/"+id).delete()};h.appendChild(x)}
+  b.appendChild(h);b.appendChild(E("div","tx",m.text));r.appendChild(b);return r;
+}
+var last=0;
+$("sf").onsubmit=function(e){
+  e.preventDefault();var t=$("ti").value.trim();if(!t||Date.now()-last<1000)return;last=Date.now();
+  $("ti").value="";
+  db.collection("messages").add({uid:ME.uid,name:PROF.name,photo:PROF.photo||"",text:t,t:firebase.firestore.FieldValue.serverTimestamp()}).catch(function(e){alert("Message nahi gaya: "+e.message)});
+};
+
+function openProfile(uid){
+  db.doc("users/"+uid).get().then(function(d){
+    if(!d.exists)return;var p=d.data(),c=$("pc");c.textContent="";
+    c.appendChild(avatar(p));c.appendChild(E("h2","",p.name+", "+p.age));
+    c.appendChild(E("p","",p.bio||"Koi bio nahi."));
+    var bar=E("div","bar");
+    if(uid!==ME.uid){
+      var rp=E("button","btn alt","Report");rp.onclick=function(){db.collection("reports").add({by:ME.uid,against:uid,t:firebase.firestore.FieldValue.serverTimestamp()}).then(function(){alert("Report bhej di gayi.")})};
+      var bl=E("button","btn alt","Block");bl.onclick=function(){blocked.push(uid);try{localStorage.setItem("blocked",JSON.stringify(blocked))}catch(e){}$("pm").classList.remove("on");enter()};
+      bar.appendChild(rp);bar.appendChild(bl);
+      if(ADMIN){var bn=E("button","btn del","Ban");bn.onclick=function(){if(confirm("Is user ko ban karein?"))db.doc("bans/"+uid).set({t:Date.now()}).then(function(){alert("Ban ho gaya.")})};bar.appendChild(bn)}
+    }
+    var cl=E("button","btn","Band karein");cl.onclick=function(){$("pm").classList.remove("on")};bar.appendChild(cl);
+    c.appendChild(bar);$("pm").classList.add("on");
+  });
+}
+}
+</script>
+</body>
+</html>
